@@ -166,6 +166,30 @@ void fbdev_exit(void)
     close(fbfd);
 }
 
+void fbdev_blank(void) {
+  if (ioctl(fbfd, FBIOBLANK, FB_BLANK_NORMAL) == -1) {
+    LV_LOG_INFO("Failed to blank display");
+  }
+}
+
+void fbdev_unblank(void) {
+  struct fb_var_screeninfo var_info;
+  if (ioctl(fbfd, FBIOBLANK, FB_BLANK_UNBLANK) == -1) {
+    LV_LOG_INFO("Failed to unblank display");
+  }
+
+  if (ioctl(fbfd, FBIOGET_VSCREENINFO, &var_info) == -1) {
+    LV_LOG_INFO("Failed to fetch screen info");
+  }
+
+  var_info.yoffset = 0;
+
+  if (ioctl(fbfd, FBIOPAN_DISPLAY, &var_info) == -1) {
+    LV_LOG_INFO("Failed to pan display");
+  }
+}
+
+
 /**
  * Flush a buffer to the marked area
  * @param drv pointer to driver where this function belongs
