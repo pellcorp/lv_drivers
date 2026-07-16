@@ -512,22 +512,6 @@ static void pointer_handle_button(void *data, struct wl_pointer *wl_pointer,
         break;
 #if LV_WAYLAND_XDG_SHELL
     case OBJECT_BUTTON_MAXIMIZE:
-        if ((button == BTN_LEFT) && (state == WL_POINTER_BUTTON_STATE_RELEASED))
-        {
-            if (window->xdg_toplevel)
-            {
-                if (window->maximized)
-                {
-                    xdg_toplevel_unset_maximized(window->xdg_toplevel);
-                }
-                else
-                {
-                    xdg_toplevel_set_maximized(window->xdg_toplevel);
-                }
-                window->maximized ^= true;
-                window->flush_pending = true;
-            }
-        }
         break;
     case OBJECT_BUTTON_MINIMIZE:
         if ((button == BTN_LEFT) && (state == WL_POINTER_BUTTON_STATE_RELEASED))
@@ -1193,7 +1177,13 @@ static void handle_global(void *data, struct wl_registry *registry,
 #if LV_WAYLAND_XDG_SHELL
     else if (strcmp(interface, xdg_wm_base_interface.name) == 0)
     {
-        app->xdg_wm = wl_registry_bind(app->registry, name, &xdg_wm_base_interface, version);
+        uint32_t bind_version = version;
+        if (bind_version > xdg_wm_base_interface.version)
+        {
+            bind_version = xdg_wm_base_interface.version;
+        }
+
+        app->xdg_wm = wl_registry_bind(app->registry, name, &xdg_wm_base_interface, bind_version);
         xdg_wm_base_add_listener(app->xdg_wm, &xdg_wm_base_listener, app);
     }
 #endif
@@ -1592,11 +1582,11 @@ static bool attach_decoration(struct window *window, struct graphic_object * dec
         break;
 #if LV_WAYLAND_XDG_SHELL
     case OBJECT_BUTTON_MAXIMIZE:
-        pos_x = parent->width - 2 * (BUTTON_MARGIN + BUTTON_SIZE);
-        pos_y = -1 * (BUTTON_MARGIN + BUTTON_SIZE + (BORDER_SIZE / 2));
+        pos_x = parent->width + BORDER_SIZE;
+        pos_y = 0;
         break;
     case OBJECT_BUTTON_MINIMIZE:
-        pos_x = parent->width - 3 * (BUTTON_MARGIN + BUTTON_SIZE);
+        pos_x = parent->width - 2 * (BUTTON_MARGIN + BUTTON_SIZE);
         pos_y = -1 * (BUTTON_MARGIN + BUTTON_SIZE + (BORDER_SIZE / 2));
         break;
 #endif
@@ -1792,6 +1782,8 @@ static struct window *create_window(struct application *app, int width, int heig
         xdg_toplevel_add_listener(window->xdg_toplevel, &xdg_toplevel_listener, window);
         xdg_toplevel_set_title(window->xdg_toplevel, title);
         xdg_toplevel_set_app_id(window->xdg_toplevel, title);
+        xdg_toplevel_set_min_size(window->xdg_toplevel, width, height);
+        xdg_toplevel_set_max_size(window->xdg_toplevel, width, height);
 
         // XDG surfaces need to be configured before a buffer can be attached.
         // An (XDG) surface commit (without an attached buffer) triggers this
