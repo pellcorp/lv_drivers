@@ -1563,6 +1563,24 @@ static bool create_decoration(struct window *window,
     return true;
 }
 
+static bool use_decoration(const struct graphic_object *decoration)
+{
+    if (decoration == NULL)
+    {
+        return false;
+    }
+
+#if LV_WAYLAND_XDG_SHELL
+    if ((decoration->type == OBJECT_BUTTON_MAXIMIZE) ||
+        (decoration->type == OBJECT_BUTTON_MINIMIZE))
+    {
+        return false;
+    }
+#endif
+
+    return true;
+}
+
 static bool attach_decoration(struct window *window, struct graphic_object * decoration,
                               struct graphic_object * parent)
 {
@@ -1698,12 +1716,19 @@ static bool resize_window(struct window *window, int width, int height)
     {
         for (b = 0; b < NUM_DECORATIONS; b++)
         {
-            if (!create_decoration(window, window->decoration[b],
+            struct graphic_object *decoration = window->decoration[b];
+
+            if (!use_decoration(decoration))
+            {
+                continue;
+            }
+
+            if (!create_decoration(window, decoration,
                                    window->body->width, window->body->height))
             {
                 LV_LOG_ERROR("failed to create decoration %d", b);
             }
-            else if (!attach_decoration(window, window->decoration[b], window->body))
+            else if (!attach_decoration(window, decoration, window->body))
             {
                 LV_LOG_ERROR("failed to attach decoration %d", b);
             }
@@ -1823,6 +1848,11 @@ static struct window *create_window(struct application *app, int width, int heig
             if (!window->decoration[d])
             {
                 LV_LOG_ERROR("Failed to create decoration %d", d);
+            }
+            else if (!use_decoration(window->decoration[d]))
+            {
+                destroy_graphic_obj(window->decoration[d]);
+                window->decoration[d] = NULL;
             }
         }
     }
